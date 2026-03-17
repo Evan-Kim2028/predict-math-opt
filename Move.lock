@@ -21,3 +21,21 @@ source = { root = true }
 use_environment = "mainnet"
 manifest_digest = "F34F65DD598DFC4D054AC84754E6BE48948313CC02FC27D9DED5770779AF5545"
 deps = { Sui = "Sui" }
+
+[pinned.testnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "74e8414a498601333fa4dd408c892f5fe3b0ca93" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "74e8414a498601333fa4dd408c892f5fe3b0ca93" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.predict_math_opt]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "BCEF5C366B5768EBD561C5B7B57E6A8F7B0667A2EFC20099060FDDE3D6CCB303"
+deps = { Sui = "Sui" }

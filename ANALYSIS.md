@@ -180,15 +180,72 @@ For n=10,000 positions, the vault needs ~104 CDF calls (via the log(n) approxima
 
 ---
 
+## On-Chain Gas Measurements (Sui Testnet)
+
+Measured via real transactions on Sui testnet, not estimates. All transactions verifiable on Suiscan.
+
+**Package**: [`0x109324692ed6bfd75733fa58c2d84e7bd50d819f84601850b11cf3e098a401bf`](https://suiscan.xyz/testnet/object/0x109324692ed6bfd75733fa58c2d84e7bd50d819f84601850b11cf3e098a401bf)
+**Network**: testnet (epoch 1041)
+**Wallet**: `0x9d4d9ad2332d39f58082311bad065bf4e4476c4e3510d21f1d8931c57df863c5`
+
+### Full compute_nd2 pipeline (the vault rebalance scenario)
+
+| Benchmark | Computation Cost | Transaction | Ratio |
+|-----------|-----------------|-------------|-------|
+| Original compute_nd2 × 100 | **74,400,000 MIST** | [93ZvtrjoEFf1RV26NZv7iFeZo6qurYUqbDCTsLTox3Si](https://suiscan.xyz/testnet/tx/93ZvtrjoEFf1RV26NZv7iFeZo6qurYUqbDCTsLTox3Si) | baseline |
+| Optimized compute_nd2 × 100 (5×20) | **1,400,000 MIST** | [9T1L13FF1A6AQ7kTNA1Ttnr2Twx7uQNidLuyWJpscRZ8](https://suiscan.xyz/testnet/tx/9T1L13FF1A6AQ7kTNA1Ttnr2Twx7uQNidLuyWJpscRZ8) | **53.1× cheaper** |
+| Optimized compute_nd2 × 100 (single fn) | **1,410,000 MIST** | [BFoGYbCz3nf5FhFjBsL1K3igwCxSYgQn9kqaszXYB3dk](https://suiscan.xyz/testnet/tx/BFoGYbCz3nf5FhFjBsL1K3igwCxSYgQn9kqaszXYB3dk) | **52.8× cheaper** |
+
+### Per-function breakdown (250 calls each)
+
+| Function | Original Cost | Optimized Cost | Transaction (orig) | Transaction (opt) | Ratio |
+|----------|--------------|---------------|-------------------|------------------|-------|
+| CDF × 250 | 6,180,000 | 1,000,000 (floor) | [5m5PpC9g1gdmbqujfrceraTb2x24LDsnRFYMDv45Bg89](https://suiscan.xyz/testnet/tx/5m5PpC9g1gdmbqujfrceraTb2x24LDsnRFYMDv45Bg89) | [6QwdSCPy6U4TBQyGwxcsKQZWkRyKtqCnyqAJx65bAVtg](https://suiscan.xyz/testnet/tx/6QwdSCPy6U4TBQyGwxcsKQZWkRyKtqCnyqAJx65bAVtg) | >6.2× |
+| sqrt × 250 | 72,900,000 | 1,000,000 (floor) | [X3ChNXQNkJBjWo5dEnEPgkhgzJW4uC6Yxf1B2xXCw67](https://suiscan.xyz/testnet/tx/X3ChNXQNkJBjWo5dEnEPgkhgzJW4uC6Yxf1B2xXCw67) | [Evgv2SL3rBPACYoBoZ2UuhyodxEuDTsiVmoXcVkyDpbW](https://suiscan.xyz/testnet/tx/Evgv2SL3rBPACYoBoZ2UuhyodxEuDTsiVmoXcVkyDpbW) | >72.9× |
+| ln × 250 | 2,020,000 | 1,000,000 (floor) | — | — | >2× |
+
+Note: 1,000,000 MIST is Sui's minimum computation gas floor. The optimized functions are so cheap that individual benchmarks hit this minimum even at 250 calls.
+
+### What this means for Aslan's vault rebalance
+
+Aslan reported ~50,000 trace gas per `compute_nd2()` call, needing 50-100 calls per transaction.
+
+| Scenario | Original | Optimized |
+|----------|----------|-----------|
+| Per call (estimated from 100-call measurement) | ~744,000 MIST | ~14,000 MIST |
+| 100 calls (measured) | 74,400,000 MIST | 1,400,000 MIST |
+| Sui max gas budget | 50,000,000,000 MIST | 50,000,000,000 MIST |
+| % of max budget consumed | **0.15%** (within budget) | **0.003%** |
+
+The original 100-call vault rebalance at 74.4M MIST is expensive but technically within Sui's 50B MIST budget. The optimized version at 1.4M MIST is negligible.
+
+---
+
+## Additional Optimizations (ln + sqrt)
+
+Beyond the piecewise CDF, this package also optimizes:
+
+### Horner-form ln (no loop)
+
+The original `ln_series()` uses a 7-iteration while loop. The Horner form evaluates the same series `2*(z + z³/3 + z⁵/5 + ... + z¹³/13)` using precomputed reciprocal constants (`1/3`, `1/5`, ..., `1/13`) in a straight-line Horner evaluation — no loop, no `div()` calls.
+
+### Unrolled Newton sqrt (no loop)
+
+The original `sqrt_u128()` uses Newton-Raphson with initial guess `x/2`, converging in ~30 iterations for typical inputs. The optimized version uses a bit-length-based initial guess (within 2× of true sqrt) + 7 unrolled Newton steps. No loop, deterministic execution path.
+
+---
+
 ## Limitations and Future Work
 
 1. **Precision tradeoff**: Piecewise cubic max error is 0.17 bp vs A&S's 0.00075 bp. If sub-basis-point precision is required, use 16 segments (doubles segment count, adds ~1 comparison, halves error to ~0.01 bp).
 
-2. **Only optimizes CDF**: The `compute_nd2()` pipeline also uses `ln()` and `sqrt()`. The same piecewise technique can be applied to these functions for additional savings.
+2. **UP/DOWN pair optimization**: `compute_nd2` computes `d2` then branches on `is_up` at the CDF step. Computing both `Φ(d2)` and `1 - Φ(d2)` from one `d2` calculation would halve calls when both directions are needed.
 
-3. **Tail behavior**: Piecewise clamps at |x| ≥ 4 (Φ(4) = 0.99997). The original clamps at |x| ≥ 8. For deep OTM options with |d₂| > 4, the piecewise approach returns exactly 0 or 1. This is sufficient for the <1 bp requirement but could be extended to |x| = 6 with 4 more segments.
+3. **Batch `get_sigmoid_shape` helper**: A single function that evaluates `compute_nd2` at N strikes sharing SVI parameters — saves parameter loading overhead and function frame setup per call.
 
-4. **Coefficient regeneration**: If higher precision is needed, run `python scripts/generate_coefficients.py` to regenerate with more segments or higher-degree polynomials.
+4. **Tail behavior**: Piecewise clamps at |x| ≥ 4 (Φ(4) = 0.99997). The original clamps at |x| ≥ 8. For deep OTM options with |d₂| > 4, the piecewise approach returns exactly 0 or 1. This is sufficient for the <1 bp requirement but could be extended to |x| = 6 with 4 more segments.
+
+5. **Coefficient regeneration**: If higher precision is needed, run `python scripts/generate_coefficients.py` to regenerate with more segments or higher-degree polynomials.
 
 ---
 
@@ -206,3 +263,5 @@ sui move test -s csv  # with statistics
 ### Drop-in replacement
 
 Replace calls to `deepbook_predict::math::normal_cdf(x, x_neg)` with `piecewise_cdf::normal_cdf(x, x_neg)`. The function signature and scaling (FLOAT_SCALING = 10⁹) are identical.
+
+For the full pipeline, replace `compute_nd2` calls with `compute_nd2::compute_nd2_optimized(forward, strike, &svi, is_up)` which uses all three optimizations (piecewise CDF + Horner ln + unrolled sqrt).
