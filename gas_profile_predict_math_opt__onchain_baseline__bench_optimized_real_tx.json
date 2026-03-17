@@ -1,0 +1,607 @@
+{
+  "exporter": "speedscope@1.15.2",
+  "name": "traces/predict_math_opt__onchain_baseline__bench_optimized_real_tx.json.zst",
+  "activeProfileIndex": 0,
+  "$schema": "https://www.speedscope.app/file-format-schema.json",
+  "shared": {
+    "frames": [
+      {
+        "name": "bench_optimized_real_tx",
+        "file": ""
+      },
+      {
+        "name": "real_tx_svi",
+        "file": ""
+      },
+      {
+        "name": "new_svi",
+        "file": ""
+      },
+      {
+        "name": "compute_nd2_optimized_native_sqrt",
+        "file": ""
+      },
+      {
+        "name": "div",
+        "file": ""
+      },
+      {
+        "name": "ln",
+        "file": ""
+      },
+      {
+        "name": "normalize",
+        "file": ""
+      },
+      {
+        "name": "log_ratio",
+        "file": ""
+      },
+      {
+        "name": "ln_horner",
+        "file": ""
+      },
+      {
+        "name": "mul",
+        "file": ""
+      },
+      {
+        "name": "m",
+        "file": ""
+      },
+      {
+        "name": "m_negative",
+        "file": ""
+      },
+      {
+        "name": "sub_signed",
+        "file": ""
+      },
+      {
+        "name": "add_signed",
+        "file": ""
+      },
+      {
+        "name": "sigma",
+        "file": ""
+      },
+      {
+        "name": "sqrt_native",
+        "file": ""
+      },
+      {
+        "name": "sqrt",
+        "file": ""
+      },
+      {
+        "name": "rho",
+        "file": ""
+      },
+      {
+        "name": "rho_negative",
+        "file": ""
+      },
+      {
+        "name": "mul_signed",
+        "file": ""
+      },
+      {
+        "name": "a",
+        "file": ""
+      },
+      {
+        "name": "b",
+        "file": ""
+      },
+      {
+        "name": "normal_cdf",
+        "file": ""
+      },
+      {
+        "name": "eval_neg_d",
+        "file": ""
+      }
+    ]
+  },
+  "profiles": [
+    {
+      "type": "evented",
+      "name": "traces/predict_math_opt__onchain_baseline__bench_optimized_real_tx.json.zst",
+      "unit": "none",
+      "startValue": 0,
+      "endValue": 39921,
+      "events": [
+        {
+          "type": "O",
+          "frame": 0,
+          "at": 0
+        },
+        {
+          "type": "O",
+          "frame": 1,
+          "at": 0
+        },
+        {
+          "type": "O",
+          "frame": 2,
+          "at": 22
+        },
+        {
+          "type": "C",
+          "frame": 2,
+          "at": 98
+        },
+        {
+          "type": "C",
+          "frame": 1,
+          "at": 99
+        },
+        {
+          "type": "O",
+          "frame": 3,
+          "at": 119
+        },
+        {
+          "type": "O",
+          "frame": 4,
+          "at": 140
+        },
+        {
+          "type": "C",
+          "frame": 4,
+          "at": 190
+        },
+        {
+          "type": "O",
+          "frame": 5,
+          "at": 190
+        },
+        {
+          "type": "O",
+          "frame": 6,
+          "at": 283
+        },
+        {
+          "type": "C",
+          "frame": 6,
+          "at": 511
+        },
+        {
+          "type": "O",
+          "frame": 7,
+          "at": 512
+        },
+        {
+          "type": "O",
+          "frame": 4,
+          "at": 559
+        },
+        {
+          "type": "C",
+          "frame": 4,
+          "at": 609
+        },
+        {
+          "type": "C",
+          "frame": 7,
+          "at": 610
+        },
+        {
+          "type": "O",
+          "frame": 8,
+          "at": 610
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 631
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 681
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 702
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 752
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 786
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 836
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 870
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 920
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 954
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1004
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1038
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1088
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1122
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1172
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1223
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1273
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1283
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1333
+        },
+        {
+          "type": "C",
+          "frame": 8,
+          "at": 1334
+        },
+        {
+          "type": "C",
+          "frame": 5,
+          "at": 1375
+        },
+        {
+          "type": "O",
+          "frame": 10,
+          "at": 1407
+        },
+        {
+          "type": "C",
+          "frame": 10,
+          "at": 1439
+        },
+        {
+          "type": "O",
+          "frame": 11,
+          "at": 1449
+        },
+        {
+          "type": "C",
+          "frame": 11,
+          "at": 1481
+        },
+        {
+          "type": "O",
+          "frame": 12,
+          "at": 1481
+        },
+        {
+          "type": "O",
+          "frame": 13,
+          "at": 1525
+        },
+        {
+          "type": "C",
+          "frame": 13,
+          "at": 1735
+        },
+        {
+          "type": "C",
+          "frame": 12,
+          "at": 1736
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1758
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1808
+        },
+        {
+          "type": "O",
+          "frame": 14,
+          "at": 1818
+        },
+        {
+          "type": "C",
+          "frame": 14,
+          "at": 1850
+        },
+        {
+          "type": "O",
+          "frame": 14,
+          "at": 1860
+        },
+        {
+          "type": "C",
+          "frame": 14,
+          "at": 1892
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 1892
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 1942
+        },
+        {
+          "type": "O",
+          "frame": 15,
+          "at": 1955
+        },
+        {
+          "type": "O",
+          "frame": 16,
+          "at": 2058
+        },
+        {
+          "type": "C",
+          "frame": 16,
+          "at": 19814
+        },
+        {
+          "type": "C",
+          "frame": 15,
+          "at": 19831
+        },
+        {
+          "type": "O",
+          "frame": 17,
+          "at": 19842
+        },
+        {
+          "type": "C",
+          "frame": 17,
+          "at": 19874
+        },
+        {
+          "type": "O",
+          "frame": 18,
+          "at": 19884
+        },
+        {
+          "type": "C",
+          "frame": 18,
+          "at": 19916
+        },
+        {
+          "type": "O",
+          "frame": 19,
+          "at": 19936
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 19957
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 20007
+        },
+        {
+          "type": "C",
+          "frame": 19,
+          "at": 20091
+        },
+        {
+          "type": "O",
+          "frame": 13,
+          "at": 20104
+        },
+        {
+          "type": "C",
+          "frame": 13,
+          "at": 20313
+        },
+        {
+          "type": "O",
+          "frame": 20,
+          "at": 20325
+        },
+        {
+          "type": "C",
+          "frame": 20,
+          "at": 20357
+        },
+        {
+          "type": "O",
+          "frame": 21,
+          "at": 20367
+        },
+        {
+          "type": "C",
+          "frame": 21,
+          "at": 20399
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 20409
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 20459
+        },
+        {
+          "type": "O",
+          "frame": 15,
+          "at": 20483
+        },
+        {
+          "type": "O",
+          "frame": 16,
+          "at": 20586
+        },
+        {
+          "type": "C",
+          "frame": 16,
+          "at": 38834
+        },
+        {
+          "type": "C",
+          "frame": 15,
+          "at": 38851
+        },
+        {
+          "type": "O",
+          "frame": 12,
+          "at": 38894
+        },
+        {
+          "type": "O",
+          "frame": 13,
+          "at": 38938
+        },
+        {
+          "type": "C",
+          "frame": 13,
+          "at": 39102
+        },
+        {
+          "type": "C",
+          "frame": 12,
+          "at": 39103
+        },
+        {
+          "type": "O",
+          "frame": 4,
+          "at": 39114
+        },
+        {
+          "type": "C",
+          "frame": 4,
+          "at": 39164
+        },
+        {
+          "type": "O",
+          "frame": 22,
+          "at": 39219
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 39264
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 39314
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 39335
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 39385
+        },
+        {
+          "type": "O",
+          "frame": 23,
+          "at": 39504
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 39535
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 39585
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 39609
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 39659
+        },
+        {
+          "type": "O",
+          "frame": 9,
+          "at": 39679
+        },
+        {
+          "type": "C",
+          "frame": 9,
+          "at": 39729
+        },
+        {
+          "type": "C",
+          "frame": 23,
+          "at": 39793
+        },
+        {
+          "type": "C",
+          "frame": 22,
+          "at": 39864
+        },
+        {
+          "type": "C",
+          "frame": 3,
+          "at": 39865
+        },
+        {
+          "type": "C",
+          "frame": 0,
+          "at": 39921
+        }
+      ]
+    }
+  ]
+}

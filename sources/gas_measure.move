@@ -8,6 +8,7 @@ use predict_math_opt::piecewise_cdf;
 use predict_math_opt::optimized_math;
 use predict_math_opt::math_utils;
 use predict_math_opt::compute_nd2;
+use predict_math_opt::onchain_baseline;
 
 const FLOAT_SCALING: u64 = 1_000_000_000;
 
@@ -249,6 +250,92 @@ public entry fun measure_optimized_ln_250() {
         let (_val, _neg) = optimized_math::ln(x);
         x = x + 100_000_000;
         if (x > 5_000_000_000) { x = 500_000_000; };
+        i = i + 1;
+    };
+}
+
+// ============================================================
+// Correct on-chain baseline (u128::sqrt + A&S CDF) vs optimized
+// (u128::sqrt + 16-seg piecewise CDF + Horner ln)
+// These use the same sqrt as the deployed predict package.
+// ============================================================
+
+/// Real tx SVI params: a=620000, b=42500000, rho=-243640000, m=11280000, sigma=84680000
+/// forward=71047183700000, strike=72437856240000
+/// 20 calls — true on-chain baseline.
+public entry fun measure_onchain_nd2_real_tx_20() {
+    let svi = compute_nd2::new_svi(620000, 42500000, 243640000, true, 11280000, false, 84680000);
+    let forward = 71047183700000u64;
+    let mut i = 0u64;
+    while (i < 20) {
+        let strike = forward - 5_000_000_000_000 + i * 500_000_000_000;
+        let _ = onchain_baseline::compute_nd2_onchain(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Real tx SVI params — 20 calls optimized (u128::sqrt + 16-seg CDF + Horner ln).
+public entry fun measure_optimized_nd2_real_tx_20() {
+    let svi = compute_nd2::new_svi(620000, 42500000, 243640000, true, 11280000, false, 84680000);
+    let forward = 71047183700000u64;
+    let mut i = 0u64;
+    while (i < 20) {
+        let strike = forward - 5_000_000_000_000 + i * 500_000_000_000;
+        let _ = onchain_baseline::compute_nd2_optimized_native_sqrt(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Real tx SVI params — 20 calls FULLY optimized (fast sqrt + 16-seg CDF + Horner ln).
+/// Comparable baseline: measure_onchain_nd2_real_tx_20 (2,720,000 MIST on testnet).
+public entry fun measure_fully_optimized_nd2_real_tx_20() {
+    let svi = compute_nd2::new_svi(620000, 42500000, 243640000, true, 11280000, false, 84680000);
+    let forward = 71047183700000u64;
+    let mut i = 0u64;
+    while (i < 20) {
+        let strike = forward - 5_000_000_000_000 + i * 500_000_000_000;
+        let _ = compute_nd2::compute_nd2_optimized(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Real tx SVI params — 100 calls FULLY optimized (fast sqrt + 16-seg CDF + Horner ln).
+/// Comparable baseline: measure_onchain_nd2_100 (290,100,000 MIST on testnet, synthetic params).
+public entry fun measure_fully_optimized_nd2_real_tx_100() {
+    let svi = compute_nd2::new_svi(620000, 42500000, 243640000, true, 11280000, false, 84680000);
+    let forward = 71047183700000u64;
+    let mut i = 0u64;
+    while (i < 100) {
+        let strike = forward - 5_000_000_000_000 + i * 100_000_000_000;
+        let _ = compute_nd2::compute_nd2_optimized(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Synthetic SVI params — 100 calls true on-chain baseline.
+public entry fun measure_onchain_nd2_100() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 100) {
+        let strike = forward - 5_000_000_000_000 + i * 100_000_000_000;
+        let _ = onchain_baseline::compute_nd2_onchain(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Synthetic SVI params — 100 calls optimized (16-seg CDF).
+public entry fun measure_optimized_nd2_onchain_sqrt_100() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 100) {
+        let strike = forward - 5_000_000_000_000 + i * 100_000_000_000;
+        let _ = onchain_baseline::compute_nd2_optimized_native_sqrt(forward, strike, &svi, i % 2 == 0);
         i = i + 1;
     };
 }

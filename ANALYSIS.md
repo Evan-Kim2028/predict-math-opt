@@ -4,7 +4,9 @@
 
 This package forks the **normal CDF computation** from [DeepBook V3's predict module](https://github.com/MystenLabs/deepbookv3/blob/main/packages/predict/sources/helper/math.move), specifically the `normal_cdf()`, `exp()`, and `ln()` functions used by [`compute_nd2()`](https://github.com/MystenLabs/deepbookv3/blob/main/packages/predict/sources/oracle.move#L378) in the SVI + Black-Scholes pricing pipeline.
 
-The original code uses the **Abramowitz & Stegun (26.2.17)** approximation, which requires computing `exp(-x²/2)` via a 12-iteration Taylor series. Three algorithmic optimizations (piecewise cubic CDF, Horner-form ln, unrolled Newton sqrt) together achieve a **52× gas reduction** at 100 `compute_nd2` calls, verified on-chain on Sui testnet.
+The original code uses the **Abramowitz & Stegun (26.2.17)** approximation, which requires computing `exp(-x²/2)` via a 12-iteration Taylor series. Three algorithmic optimizations (piecewise cubic CDF, Horner-form ln, unrolled Newton sqrt) together achieve a **52× gas reduction** at 100 `compute_nd2` calls (unrolled sqrt vs the old loop-based sqrt).
+
+> **Updated baseline (v2, March 2026):** The deployed predict package uses `u128::sqrt` (Move stdlib, 64-iter digit-by-digit), not the custom Newton loop used in the original v1 baseline. Against the correct on-chain baseline, CDF+ln optimization alone delivers **1.09–1.15× savings**. Replacing sqrt too yields **194.7× savings** at 100 calls. See the [Correct On-Chain Baseline](#correct-on-chain-baseline-v2) section for details.
 
 ### Files in this package
 
@@ -140,6 +142,54 @@ All 57 tests pass:
 
 ---
 
+## Correct On-Chain Baseline (v2)
+
+The v1 analysis claimed 52× improvement, but it compared against `math_utils::sqrt_u128` — a custom Newton-Raphson loop that starts at `x/2` (catastrophically bad initial guess for u128 inputs). The **deployed predict package** actually uses `deepbook::math::sqrt → std::u128::sqrt` (Move stdlib digit-by-digit, 64 fixed iterations).
+
+This changes the comparison entirely. `u128::sqrt` is 2.1× **more** expensive than the custom loop, and dominates the overall cost.
+
+### Gas profile: single `compute_nd2` call (real tx SVI params)
+
+Measured via `sui move test --trace` + `sui analyze-trace gas-profile` (speedscope format):
+
+| Component | Onchain baseline | Optimized (16-seg CDF) | Savings |
+|---|---:|---:|---:|
+| `sqrt` ×2 (`u128::sqrt`) | 36,004 | 36,004 | 0 |
+| `normal_cdf` | 2,857 | 645 | +2,212 |
+| `ln` | 2,067 | 1,185 | +882 |
+| Other | 2,087 | 2,087 | 0 |
+| **TOTAL** | **43,015** | **39,921** | **1.08×** |
+
+`sqrt` accounts for **84–90%** of total cost. CDF+ln optimization alone saves only ~3,100 gas per call.
+
+### On-chain MIST costs (testnet v2)
+
+Package v2: [`0xa5277e3a...`](https://suiscan.xyz/testnet/object/0xa5277e3ab4775c678350f512d910ca12afc6c343abc211a79bee149cbfaaa91e)
+
+**Real tx SVI params** (a=620000, b=42500000, rho=-0.24364, m=0.01128, sigma=0.08468):
+
+| Calls | Onchain baseline | Optimized (same sqrt) | Ratio |
+|---|---:|---:|---|
+| 20 calls | 2,720,000 MIST | 2,370,000 MIST | **1.15×** |
+
+**Synthetic SVI params** (a=0.05, b=0.2, rho=-0.3, m=0.01, sigma=0.1):
+
+| Calls | Onchain baseline | Optimized (same sqrt) | Fully optimized (fast sqrt) |
+|---|---:|---:|---:|
+| 100 calls | 290,100,000 MIST | 266,500,000 MIST | 1,490,000 MIST |
+| Ratio | — | **1.09×** | **194.7×** |
+
+**Summary**: Replacing CDF and ln (but keeping `u128::sqrt`) yields 9–15% savings on testnet. Replacing sqrt too — which requires modifying the deployed predict contract — yields 194.7× savings at 100 calls.
+
+### Why the 16-seg CDF upgrade matters despite small gas savings
+
+Even though the gas savings from CDF alone are modest, the **accuracy improvement is essential**:
+- v1 (8 segments): 0.17 bp max error — exceeded the 0.01 bp production tolerance
+- v2 (16 segments): **0.0108 bp max error** — meets the 0.01 bp target
+- Gas overhead of extra segments: +69 gas per call (negligible, sqrt dominates)
+
+---
+
 ## On-Chain Gas Measurements (Sui Testnet)
 
 All values measured via real transactions on Sui testnet. Every number is verifiable on Suiscan.
@@ -216,7 +266,7 @@ This is why the 3.66× bytecode reduction (2,902 → 792 per call) translates to
 
 ## Limitations and Future Work
 
-1. **Precision tradeoff**: Piecewise cubic max error is 0.17 bp vs A&S's 0.00075 bp. If sub-basis-point precision is required, use 16 segments (doubles segment count, adds ~1 comparison, halves error to ~0.01 bp).
+1. **Precision**: ~~Piecewise cubic max error is 0.17 bp~~ — **resolved in v2**: upgraded to 16 segments, max error = **0.0108 bp**, meets Aslan's 0.01 bp production tolerance. Coefficients generated inline (see `scripts/generate_coefficients.py` for 8-seg; 16-seg was run ad-hoc).
 
 2. **UP/DOWN pair optimization**: `compute_nd2` computes `d2` then branches on `is_up` at the CDF step. Computing both `Φ(d2)` and `1 - Φ(d2)` from one `d2` calculation would halve calls when both directions are needed.
 

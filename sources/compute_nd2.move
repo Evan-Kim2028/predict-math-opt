@@ -35,6 +35,14 @@ public fun new_svi(
     SVIParams { a, b, rho, rho_negative, m, m_negative, sigma }
 }
 
+public fun a(svi: &SVIParams): u64 { svi.a }
+public fun b(svi: &SVIParams): u64 { svi.b }
+public fun rho(svi: &SVIParams): u64 { svi.rho }
+public fun rho_negative(svi: &SVIParams): bool { svi.rho_negative }
+public fun m(svi: &SVIParams): u64 { svi.m }
+public fun m_negative(svi: &SVIParams): bool { svi.m_negative }
+public fun sigma(svi: &SVIParams): u64 { svi.sigma }
+
 // ============================================================
 // Original compute_nd2 (using A&S CDF, loop-based ln/sqrt)
 // ============================================================
