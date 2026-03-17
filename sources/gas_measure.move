@@ -111,6 +111,34 @@ public entry fun measure_optimized_nd2_20() {
     };
 }
 
+/// 100 calls to original compute_nd2 (for apples-to-apples comparison).
+public entry fun measure_original_nd2_100() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 100) {
+        let strike = forward - 5_000_000_000_000 + i * 100_000_000_000;
+        let _ = compute_nd2::compute_nd2_original(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// 500 calls to original compute_nd2.
+public entry fun measure_original_nd2_500() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 500) {
+        let strike = forward - 5_000_000_000_000 + (i % 100) * 100_000_000_000;
+        let _ = compute_nd2::compute_nd2_original(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
 /// 100 calls to optimized compute_nd2 (the vault rebalance scenario).
 public entry fun measure_optimized_nd2_100() {
     let svi = compute_nd2::new_svi(
@@ -149,6 +177,78 @@ public entry fun measure_optimized_nd2_1000() {
     while (i < 1000) {
         let strike = forward - 5_000_000_000_000 + (i % 100) * 100_000_000_000;
         let _ = compute_nd2::compute_nd2_optimized(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// 250 calls to original sqrt.
+public entry fun measure_original_sqrt_250() {
+    let mut x: u64 = 100_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let _ = math_utils::sqrt(x, FLOAT_SCALING);
+        x = x + 200_000_000;
+        if (x > 10_000_000_000) { x = 100_000_000; };
+        i = i + 1;
+    };
+}
+
+/// 250 calls to optimized sqrt.
+public entry fun measure_optimized_sqrt_250() {
+    let mut x: u64 = 100_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let _ = optimized_math::sqrt(x, FLOAT_SCALING);
+        x = x + 200_000_000;
+        if (x > 10_000_000_000) { x = 100_000_000; };
+        i = i + 1;
+    };
+}
+
+/// 250 calls to original CDF.
+public entry fun measure_original_cdf_250() {
+    let mut x: u64 = 100_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let _ = original_cdf::normal_cdf(x, i % 3 == 0);
+        x = x + 70_000_000;
+        if (x > 3_500_000_000) { x = x - 3_400_000_000; };
+        i = i + 1;
+    };
+}
+
+/// 250 calls to piecewise CDF.
+public entry fun measure_piecewise_cdf_250() {
+    let mut x: u64 = 100_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let _ = piecewise_cdf::normal_cdf(x, i % 3 == 0);
+        x = x + 70_000_000;
+        if (x > 3_500_000_000) { x = x - 3_400_000_000; };
+        i = i + 1;
+    };
+}
+
+/// 250 calls to original ln.
+public entry fun measure_original_ln_250() {
+    let mut x: u64 = 500_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let (_val, _neg) = original_cdf::ln(x);
+        x = x + 100_000_000;
+        if (x > 5_000_000_000) { x = 500_000_000; };
+        i = i + 1;
+    };
+}
+
+/// 250 calls to optimized ln.
+public entry fun measure_optimized_ln_250() {
+    let mut x: u64 = 500_000_000;
+    let mut i = 0;
+    while (i < 250) {
+        let (_val, _neg) = optimized_math::ln(x);
+        x = x + 100_000_000;
+        if (x > 5_000_000_000) { x = 500_000_000; };
         i = i + 1;
     };
 }

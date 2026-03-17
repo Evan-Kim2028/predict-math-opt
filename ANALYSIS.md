@@ -4,7 +4,7 @@
 
 This package forks the **normal CDF computation** from [DeepBook V3's predict module](https://github.com/MystenLabs/deepbookv3/blob/main/packages/predict/sources/helper/math.move), specifically the `normal_cdf()`, `exp()`, and `ln()` functions used by [`compute_nd2()`](https://github.com/MystenLabs/deepbookv3/blob/main/packages/predict/sources/oracle.move#L378) in the SVI + Black-Scholes pricing pipeline.
 
-The original code uses the **Abramowitz & Stegun (26.2.17)** approximation, which requires computing `exp(-x²/2)` via a 12-iteration Taylor series. This analysis demonstrates that a **piecewise cubic polynomial** approach eliminates the Taylor series entirely and achieves a **5.2x–19.5x gas reduction** depending on call count.
+The original code uses the **Abramowitz & Stegun (26.2.17)** approximation, which requires computing `exp(-x²/2)` via a 12-iteration Taylor series. Three algorithmic optimizations (piecewise cubic CDF, Horner-form ln, unrolled Newton sqrt) together achieve a **52× gas reduction** at 100 `compute_nd2` calls, verified on-chain on Sui testnet.
 
 ### Files in this package
 
@@ -13,10 +13,14 @@ The original code uses the **Abramowitz & Stegun (26.2.17)** approximation, whic
 | `sources/original_cdf.move` | Exact port of the A&S CDF from `deepbook_predict::math` |
 | `sources/piecewise_cdf.move` | Piecewise cubic CDF replacement (8 segments, no `exp()`) |
 | `sources/lookup_cdf.move` | Lookup table CDF with linear interpolation (alternative) |
+| `sources/optimized_math.move` | Optimized ln (Horner form) and sqrt (unrolled Newton) |
 | `sources/math_utils.move` | Standalone fixed-point math helpers (ported from `deepbook::math`) |
+| `sources/compute_nd2.move` | Full compute_nd2 pipeline — original vs optimized side-by-side |
 | `sources/comparison_tests.move` | Head-to-head accuracy tests across all implementations |
 | `sources/gas_bench.move` | Gas benchmarking tests (1, 10, 100 CDF calls) |
+| `sources/gas_measure.move` | On-chain entry functions for real gas measurement on testnet |
 | `scripts/generate_coefficients.py` | Python script to regenerate piecewise coefficients |
+| `scripts/gas_to_speedscope.py` | Generate speedscope.app-compatible profile from test runner |
 
 ### What was NOT forked
 
@@ -124,13 +128,15 @@ All segments strictly monotone increasing. No arbitrage possible from CDF mispri
 
 ### Test results
 
-All 43 tests pass:
+All 57 tests pass:
 - 7 original A&S unit tests
 - 7 piecewise cubic unit tests
 - 7 lookup table unit tests
 - 3 math_utils unit tests
+- 7 optimized_math unit tests (ln + sqrt)
 - 10 cross-implementation comparison tests (accuracy, symmetry, monotonicity, boundaries, sweeps)
-- 9 gas benchmarks (1, 10, 100 calls × 3 implementations)
+- 9 gas benchmarks (1, 10, 100 CDF calls × 3 implementations)
+- 7 compute_nd2 benchmarks (original vs optimized pipeline)
 
 ---
 
@@ -138,52 +144,59 @@ All 43 tests pass:
 
 All values measured via real transactions on Sui testnet. Every number is verifiable on Suiscan.
 
-**Packages**: [`0x109324...`](https://suiscan.xyz/testnet/object/0x109324692ed6bfd75733fa58c2d84e7bd50d819f84601850b11cf3e098a401bf), [`0x5de1cc...`](https://suiscan.xyz/testnet/object/0x5de1ccf60cba0b91f2c293021e5608e9b59e6f7eecab3e3115a6324a8053d7c3)
-**Network**: testnet (epoch 1041)
+### Verified results (March 2026)
 
-### Correctness verification (on-chain)
+**Package**: [`0x1df028...`](https://suiscan.xyz/testnet/object/0x1df0281d6333bb1ad97b620f2f8ae9187d54919e5d73e2c757a6b869d2e0ae6d)
+**Network**: testnet
 
-Before comparing gas, we verified both implementations produce the same outputs. The `verify_outputs_match` entry function calls **both** original and optimized `compute_nd2` with 10 different strikes using identical SVI parameters, and asserts outputs match within 2 basis points. The transaction **succeeded**, proving correctness on-chain:
+#### Correctness verification (on-chain)
 
-[UK42mzmbSzUesYYtsZoVg19M4N3SvPK7A8G4EzgqsaE](https://suiscan.xyz/testnet/tx/UK42mzmbSzUesYYtsZoVg19M4N3SvPK7A8G4EzgqsaE) — Status: **Success**
+Before comparing gas, we verified both implementations produce the same outputs. The `verify_outputs_match` entry function calls **both** original and optimized `compute_nd2` with 10 different strikes using identical SVI parameters, and asserts outputs match within 2 basis points:
 
-### Full compute_nd2 pipeline — scaling comparison
+[Hs9WRDEVXezggk8CsoRdq4L6h2GPzrNMP3Ev8E5WzDrf](https://suiscan.xyz/testnet/tx/Hs9WRDEVXezggk8CsoRdq4L6h2GPzrNMP3Ev8E5WzDrf) — Status: **Success**
+
+#### Full compute_nd2 pipeline — 100 calls
 
 Both benchmarks use identical parameters: SVI(a=0.05, b=0.2, rho=-0.3, m=0.01, sigma=0.1), forward=50000, varied strikes over the same range.
 
-| Calls | Original | Optimized | Ratio | Original per-call | Optimized per-call |
-|-------|----------|-----------|-------|-------------------|--------------------|
-| 100 | **74,400,000 MIST** | **1,420,000 MIST** | **52×** | 744,000 | 14,200 |
-| 200 | **259,600,000 MIST** | **7,450,000 MIST** | **35×** | 1,298,000 | 37,250 |
+| | Computation | Storage | Rebate | **Total Gas** | Digest |
+|---|---:|---:|---:|---:|---|
+| **Original** | 75,100,000 | 988,000 | -978,120 | **75,109,880 MIST** | [`E253rhKq...`](https://suiscan.xyz/testnet/tx/E253rhKqApYpNYJdhD3Bk5N5nmdecMJ7EK4VhM276sf5) |
+| **Optimized** | 1,440,000 | 988,000 | -978,120 | **1,449,880 MIST** | [`3rkAu4jh...`](https://suiscan.xyz/testnet/tx/3rkAu4jh5xZSPM4bsJG4JmJ4kEyQ3CefbQwRvYSh2yv3) |
+| **Ratio** | **52.2×** | — | — | **51.8×** | |
 
-Transaction links:
-- Original × 100: [93ZvtrjoEFf1RV26NZv7iFeZo6qurYUqbDCTsLTox3Si](https://suiscan.xyz/testnet/tx/93ZvtrjoEFf1RV26NZv7iFeZo6qurYUqbDCTsLTox3Si)
-- Optimized × 100: [9T1L13FF1A6AQ7kTNA1Ttnr2Twx7uQNidLuyWJpscRZ8](https://suiscan.xyz/testnet/tx/9T1L13FF1A6AQ7kTNA1Ttnr2Twx7uQNidLuyWJpscRZ8)
-- Optimized × 100 (single fn): [BFoGYbCz3nf5FhFjBsL1K3igwCxSYgQn9kqaszXYB3dk](https://suiscan.xyz/testnet/tx/BFoGYbCz3nf5FhFjBsL1K3igwCxSYgQn9kqaszXYB3dk)
+#### Per-function breakdown — 250 calls each
 
-**Key observations on scaling:**
-- The original's per-call cost **increases** with more calls: 744,000/call at 100 → 1,298,000/call at 200 (1.7× more expensive per call just from doubling the count). This is Sui's tiered instruction pricing penalizing high-instruction-count transactions.
-- The ratio drops from 52× at 100 calls to 35× at 200 calls because the optimized version also starts entering higher tiers. But 35× is still massive.
-
-### Where the savings come from — per-function breakdown
-
-Three optimizations, measured individually at 250 calls each:
+Three optimizations, measured individually:
 
 | Optimization | Original gas | Optimized gas | Savings | What changed |
-|-------------|-------------|---------------|---------|-------------|
+|-------------|---:|---:|---:|---|
 | **sqrt** (×2 per nd2 call) | 72,900,000 | 1,000,000 (floor) | **>72×** | Loop with bad initial guess (x/2, ~30 iters) → bit-length guess + 7 unrolled steps |
-| **CDF** | 6,180,000 | 1,000,000 (floor) | **>6×** | A&S with 12-iter Taylor exp() → 8-segment piecewise cubic, no exp, no loop |
-| **ln** | 2,020,000 | 1,000,000 (floor) | **>2×** | 7-iter series with loop + div() → Horner form, precomputed 1/k, no loop, no div |
+| **CDF** | 6,060,000 | 1,000,000 (floor) | **>6×** | A&S with 12-iter Taylor exp() → 8-segment piecewise cubic, no exp, no loop |
+| **ln** | 2,000,000 | 1,000,000 (floor) | **>2×** | 7-iter series with loop + div() → Horner form, precomputed 1/k, no loop, no div |
 
 Transaction links:
-- Original sqrt × 250: [X3ChNXQNkJBjWo5dEnEPgkhgzJW4uC6Yxf1B2xXCw67](https://suiscan.xyz/testnet/tx/X3ChNXQNkJBjWo5dEnEPgkhgzJW4uC6Yxf1B2xXCw67)
-- Optimized sqrt × 250: [Evgv2SL3rBPACYoBoZ2UuhyodxEuDTsiVmoXcVkyDpbW](https://suiscan.xyz/testnet/tx/Evgv2SL3rBPACYoBoZ2UuhyodxEuDTsiVmoXcVkyDpbW)
-- Original CDF × 250: [5m5PpC9g1gdmbqujfrceraTb2x24LDsnRFYMDv45Bg89](https://suiscan.xyz/testnet/tx/5m5PpC9g1gdmbqujfrceraTb2x24LDsnRFYMDv45Bg89)
-- Optimized CDF × 250: [6QwdSCPy6U4TBQyGwxcsKQZWkRyKtqCnyqAJx65bAVtg](https://suiscan.xyz/testnet/tx/6QwdSCPy6U4TBQyGwxcsKQZWkRyKtqCnyqAJx65bAVtg)
+- Original sqrt × 250: [`6i1jeA97...`](https://suiscan.xyz/testnet/tx/6i1jeA97CAMN6RZ1ExZQJjWDHPgW6aCX7fF3yvJZkRHS)
+- Optimized sqrt × 250: [`8cJeq1s4...`](https://suiscan.xyz/testnet/tx/8cJeq1s4HTprdbzL51CnZVBAq8sHKGJN1zz4MCdkm5aM)
+- Original CDF × 250: [`4qnrdAVc...`](https://suiscan.xyz/testnet/tx/4qnrdAVch3rWC3CV8RNewMuAbyeTAHKRBChtvXNWFcag)
+- Piecewise CDF × 250: [`2TtmiBAz...`](https://suiscan.xyz/testnet/tx/2TtmiBAzgV6tbSKq3CrLZpMVJezUPGTbTAxxSUazW6Gc)
+- Original ln × 250: [`EHb7KiVw...`](https://suiscan.xyz/testnet/tx/EHb7KiVwZodvTSuJoWbH5FW5e35dyK33ssSRwoNpxgzW)
+- Optimized ln × 250: [`65xHbcBs...`](https://suiscan.xyz/testnet/tx/65xHbcBsazMtesH79GWt6yuDpzcsaTxR5mpNRzzYyTxo)
 
 Note: 1,000,000 MIST is Sui's minimum computation gas floor. The optimized functions are so cheap that individual benchmarks hit this floor even at 250 calls.
 
 **sqrt was the biggest win by far.** The original Newton-Raphson starts with guess = x/2 for u128 inputs (~10^18). This is catastrophically far from the answer (~10^9), requiring ~30 iterations of linear convergence before quadratic convergence kicks in. Each iteration executes 25 bytecodes of u256 division. The optimized version uses a bit-length estimate (within 2× of true sqrt) + 7 fixed Newton steps — no loop, no conditionals, deterministic.
+
+### Earlier measurements (for reference)
+
+Earlier measurements on packages [`0x109324...`](https://suiscan.xyz/testnet/object/0x109324692ed6bfd75733fa58c2d84e7bd50d819f84601850b11cf3e098a401bf) and [`0x5de1cc...`](https://suiscan.xyz/testnet/object/0x5de1ccf60cba0b91f2c293021e5608e9b59e6f7eecab3e3115a6324a8053d7c3) (epoch 1041) showed consistent results:
+
+| Calls | Original | Optimized | Ratio |
+|-------|----------|-----------|-------|
+| 100 | 74,400,000 MIST | 1,420,000 MIST | 52× |
+| 200 | 259,600,000 MIST | 7,450,000 MIST | 35× |
+
+The ratio drops from 52× at 100 calls to 35× at 200 calls because the optimized version also starts entering higher pricing tiers. But 35× is still massive.
 
 ### Sui gas model context
 
