@@ -1,0 +1,10 @@
+[package]
+name = "predict_math_opt"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "testnet-v1.62.0" }
+
+[addresses]
+predict_math_opt = "0x0"
