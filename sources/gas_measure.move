@@ -124,3 +124,58 @@ public entry fun measure_optimized_nd2_100() {
         i = i + 1;
     };
 }
+
+/// 500 calls to optimized compute_nd2.
+public entry fun measure_optimized_nd2_500() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 500) {
+        let strike = forward - 5_000_000_000_000 + (i % 100) * 100_000_000_000;
+        let _ = compute_nd2::compute_nd2_optimized(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// 1000 calls to optimized compute_nd2.
+public entry fun measure_optimized_nd2_1000() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+    let mut i = 0u64;
+    while (i < 1000) {
+        let strike = forward - 5_000_000_000_000 + (i % 100) * 100_000_000_000;
+        let _ = compute_nd2::compute_nd2_optimized(forward, strike, &svi, i % 2 == 0);
+        i = i + 1;
+    };
+}
+
+/// Verification: call BOTH original and optimized with same inputs,
+/// assert outputs match within tolerance. This proves correctness on-chain.
+public entry fun verify_outputs_match() {
+    let svi = compute_nd2::new_svi(
+        50_000_000, 200_000_000, 300_000_000, true, 10_000_000, false, 100_000_000,
+    );
+    let forward = 50_000_000_000_000;
+
+    let mut i = 0u64;
+    while (i < 10) {
+        let strike = forward - 3_000_000_000_000 + i * 700_000_000_000;
+
+        let orig_up = compute_nd2::compute_nd2_original(forward, strike, &svi, true);
+        let opt_up = compute_nd2::compute_nd2_optimized(forward, strike, &svi, true);
+        let orig_down = compute_nd2::compute_nd2_original(forward, strike, &svi, false);
+        let opt_down = compute_nd2::compute_nd2_optimized(forward, strike, &svi, false);
+
+        // Assert within 2bp (200_000 in FLOAT_SCALING)
+        let diff_up = if (orig_up > opt_up) { orig_up - opt_up } else { opt_up - orig_up };
+        let diff_down = if (orig_down > opt_down) { orig_down - opt_down } else { opt_down - orig_down };
+        assert!(diff_up < 200_000, 100 + i);
+        assert!(diff_down < 200_000, 200 + i);
+
+        i = i + 1;
+    };
+}
